@@ -34,7 +34,7 @@ build/
 
 # Firebase service account keys - NEVER commit!
 *.json
-!package.json
+
 !tsconfig.json
 !tsconfig.node.json
 !vite.config.json
