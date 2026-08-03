@@ -38,7 +38,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { 
-  auth, 
+  auth,
+  onAuthStateChanged,
   loginUser, 
   registerUser, 
   logoutUser, 
@@ -55,12 +56,14 @@ import {
   getUserMessages,
   saveFavoriteDestination,
   removeFavoriteDestination,
-  onAuthStateChange,
   getCurrentUser,
   resetPassword,
   updateUserEmail,
   updateUserPassword
-} from './components/firebase/config.js';
+} from './firebase/config.js';
+
+import AuthModal from './components/Auth.jsx';
+import UserProfile from './components/UserProfile.jsx';
 
 // Fix Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -69,6 +72,181 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
+
+// --- ALL BOOKING SITES ---
+const BOOKING_SITES = {
+  // Hotels & Accommodations
+  booking: {
+    name: 'Booking.com',
+    url: 'https://www.booking.com',
+    searchUrl: 'https://www.booking.com/searchresults.html?ss=',
+    icon: '🏨',
+    color: '#003580',
+    description: 'Hotels & Accommodations'
+  },
+  agoda: {
+    name: 'Agoda',
+    url: 'https://www.agoda.com',
+    searchUrl: 'https://www.agoda.com/search?city=',
+    icon: '🏩',
+    color: '#E31E24',
+    description: 'Hotels & Resorts'
+  },
+  expedia: {
+    name: 'Expedia',
+    url: 'https://www.expedia.com',
+    searchUrl: 'https://www.expedia.com/Hotel-Search?destination=',
+    icon: '🌍',
+    color: '#0066CC',
+    description: 'Hotels, Flights & Packages'
+  },
+  hotelscom: {
+    name: 'Hotels.com',
+    url: 'https://www.hotels.com',
+    searchUrl: 'https://www.hotels.com/search.do?destination=',
+    icon: '🏨',
+    color: '#D20000',
+    description: 'Hotel Deals'
+  },
+  airbnb: {
+    name: 'Airbnb',
+    url: 'https://www.airbnb.com',
+    searchUrl: 'https://www.airbnb.com/s/',
+    icon: '🏠',
+    color: '#FF5A5F',
+    description: 'Vacation Rentals'
+  },
+  tripadvisor: {
+    name: 'TripAdvisor',
+    url: 'https://www.tripadvisor.com',
+    searchUrl: 'https://www.tripadvisor.com/Search?q=',
+    icon: '📝',
+    color: '#34A853',
+    description: 'Reviews & Bookings'
+  },
+
+  // Flights
+  skyscanner: {
+    name: 'Skyscanner',
+    url: 'https://www.skyscanner.net',
+    searchUrl: 'https://www.skyscanner.net/transport/flights/anywhere/',
+    icon: '✈️',
+    color: '#FF6B00',
+    description: 'Flights & Travel'
+  },
+  kayak: {
+    name: 'Kayak',
+    url: 'https://www.kayak.com',
+    searchUrl: 'https://www.kayak.com/hotels/',
+    icon: '🔍',
+    color: '#00AEEF',
+    description: 'Compare Deals'
+  },
+  momondo: {
+    name: 'Momondo',
+    url: 'https://www.momondo.com',
+    searchUrl: 'https://www.momondo.com/flights/',
+    icon: '🌐',
+    color: '#F15A24',
+    description: 'Flight Search'
+  },
+  cheapflights: {
+    name: 'CheapFlights',
+    url: 'https://www.cheapflights.com',
+    searchUrl: 'https://www.cheapflights.com/flights/',
+    icon: '💰',
+    color: '#00A651',
+    description: 'Budget Flights'
+  },
+
+  // Safaris & Tours
+  trawell: {
+    name: 'Trawell Safaris',
+    url: 'https://www.trawellsafaris.com',
+    searchUrl: 'https://www.trawellsafaris.com/search?q=',
+    icon: '🦁',
+    color: '#f6b83d',
+    description: 'African Safaris'
+  },
+  viator: {
+    name: 'Viator',
+    url: 'https://www.viator.com',
+    searchUrl: 'https://www.viator.com/search/',
+    icon: '🎯',
+    color: '#00AEEF',
+    description: 'Tours & Activities'
+  },
+  getyourguide: {
+    name: 'GetYourGuide',
+    url: 'https://www.getyourguide.com',
+    searchUrl: 'https://www.getyourguide.com/',
+    icon: '📸',
+    color: '#FF385C',
+    description: 'Tours & Experiences'
+  },
+
+  // Car Rentals
+  rentalcars: {
+    name: 'Rentalcars.com',
+    url: 'https://www.rentalcars.com',
+    searchUrl: 'https://www.rentalcars.com/',
+    icon: '🚗',
+    color: '#00A3E0',
+    description: 'Car Rentals'
+  },
+  europcar: {
+    name: 'Europcar',
+    url: 'https://www.europcar.com',
+    searchUrl: 'https://www.europcar.com/',
+    icon: '🚙',
+    color: '#005B9A',
+    description: 'Car Hire'
+  },
+
+  // Packages & Deals
+  lastminute: {
+    name: 'Lastminute.com',
+    url: 'https://www.lastminute.com',
+    searchUrl: 'https://www.lastminute.com/search?q=',
+    icon: '⏰',
+    color: '#FF6B00',
+    description: 'Last Minute Deals'
+  },
+  travelocity: {
+    name: 'Travelocity',
+    url: 'https://www.travelocity.com',
+    searchUrl: 'https://www.travelocity.com/Hotel-Search?destination=',
+    icon: '🧳',
+    color: '#003366',
+    description: 'Travel Packages'
+  }
+};
+
+// --- Text-to-Speech Function ---
+const speakText = (text, onEnd = null) => {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const femaleVoice = voices.find(voice => voice.name.includes('Google UK') || voice.name.includes('Samantha'));
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+    }
+    
+    if (onEnd) {
+      utterance.onend = onEnd;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+    return utterance;
+  }
+  return null;
+};
 
 // --- 3D Avatar ---
 function TravelAvatar() {
@@ -200,372 +378,10 @@ function TravelMap({ destinations, selectedDestination }) {
   );
 }
 
-// --- Auth Modal ---
-function AuthModal({ isOpen, onClose, onLogin, onRegister, onResetPassword }) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showReset, setShowReset] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    if (isLogin) {
-      const success = await onLogin(email, password);
-      if (success) {
-        onClose();
-        setEmail('');
-        setPassword('');
-      } else {
-        setError('Invalid email or password');
-      }
-    } else {
-      if (password !== confirmPassword) {
-        setError('Passwords do not match');
-        setLoading(false);
-        return;
-      }
-      const success = await onRegister(name, email, password);
-      if (success) {
-        onClose();
-        setEmail('');
-        setPassword('');
-        setName('');
-        setConfirmPassword('');
-      } else {
-        setError('Registration failed. Email may already exist.');
-      }
-    }
-    setLoading(false);
-  };
-
-  const handleReset = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    const success = await onResetPassword(email);
-    if (success) {
-      setShowReset(false);
-      setError('Password reset email sent! Check your inbox.');
-    } else {
-      setError('Failed to send reset email. Please try again.');
-    }
-    setLoading(false);
-  };
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  return (
-    <div className="auth-modal-overlay" onClick={handleOverlayClick}>
-      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="auth-close" onClick={onClose}>
-          <FontAwesomeIcon icon={faTimes} />
-        </button>
-        
-        <div className="auth-header">
-          <FontAwesomeIcon icon={faCompass} className="auth-logo" />
-          <h2>{showReset ? 'Reset Password' : isLogin ? 'Welcome Back!' : 'Create Account'}</h2>
-          <p>{showReset ? 'Enter your email to reset password' : isLogin ? 'Sign in to continue your travels' : 'Start your journey with Wanderly'}</p>
-        </div>
-
-        {showReset ? (
-          <form onSubmit={handleReset} className="auth-form">
-            <div className="auth-field">
-              <label>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-            {error && <div className="auth-error">{error}</div>}
-            <button type="submit" className="auth-submit" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Reset Email'}
-            </button>
-            <button 
-              type="button" 
-              className="auth-switch-btn"
-              onClick={() => setShowReset(false)}
-            >
-              Back to Sign In
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit} className="auth-form">
-            {!isLogin && (
-              <div className="auth-field">
-                <label>Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe"
-                  required={!isLogin}
-                />
-              </div>
-            )}
-            
-            <div className="auth-field">
-              <label>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-            
-            <div className="auth-field">
-              <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            {!isLogin && (
-              <div className="auth-field">
-                <label>Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required={!isLogin}
-                />
-              </div>
-            )}
-
-            {error && <div className="auth-error">{error}</div>}
-
-            <button type="submit" className="auth-submit" disabled={loading}>
-              {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
-            </button>
-
-            {isLogin && (
-              <button 
-                type="button" 
-                className="auth-switch-btn"
-                onClick={() => setShowReset(true)}
-              >
-                Forgot Password?
-              </button>
-            )}
-          </form>
-        )}
-
-        {!showReset && (
-          <div className="auth-switch">
-            <p>
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
-              <button onClick={() => { setIsLogin(!isLogin); setError(''); }}>
-                {isLogin ? ' Sign Up' : ' Sign In'}
-              </button>
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// --- User Profile Component ---
-function UserProfile({ user, onLogout, onUpdateProfile, onClose, userTrips, userBookings }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [preferences, setPreferences] = useState({
-    currency: user?.preferences?.currency || 'USD',
-    notifications: user?.preferences?.notifications !== false,
-    darkMode: user?.preferences?.darkMode || false
-  });
-
-  if (!user) return null;
-
-  const handleSave = () => {
-    onUpdateProfile({ name, email, preferences });
-    setIsEditing(false);
-  };
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  return (
-    <div className="profile-modal-overlay" onClick={handleOverlayClick}>
-      <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="profile-close" onClick={onClose}>
-          <FontAwesomeIcon icon={faTimes} />
-        </button>
-        
-        <div className="profile-header">
-          <div className="profile-avatar">
-            <FontAwesomeIcon icon={faUser} size="3x" />
-          </div>
-          <h2>{user.name || 'Traveler'}</h2>
-          <p>{user.email}</p>
-          <span className="profile-plan">
-            <FontAwesomeIcon icon={faGem} /> {user.plan || 'Standard'} Plan
-          </span>
-        </div>
-
-        <div className="profile-stats">
-          <div className="stat-item">
-            <span className="stat-value">{user.tripsPlanned || 0}</span>
-            <span className="stat-label">Trips Planned</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-value">{user.destinationsVisited || 0}</span>
-            <span className="stat-label">Destinations</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-value">{user.reviews || 0}</span>
-            <span className="stat-label">Reviews</span>
-          </div>
-        </div>
-
-        <div className="profile-body">
-          {isEditing ? (
-            <>
-              <div className="profile-field">
-                <label>Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="profile-field">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="profile-field">
-                <label>Preferred Currency</label>
-                <select
-                  value={preferences.currency}
-                  onChange={(e) => setPreferences({...preferences, currency: e.target.value})}
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="KES">KES (KSh)</option>
-                  <option value="JPY">JPY (¥)</option>
-                </select>
-              </div>
-              <div className="profile-field checkbox">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={preferences.notifications}
-                    onChange={(e) => setPreferences({...preferences, notifications: e.target.checked})}
-                  />
-                  Enable Notifications
-                </label>
-              </div>
-              <div className="profile-actions">
-                <button className="profile-save" onClick={handleSave}>
-                  <FontAwesomeIcon icon={faSave} /> Save Changes
-                </button>
-                <button className="profile-cancel" onClick={() => setIsEditing(false)}>
-                  Cancel
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="profile-info">
-                <div className="info-row">
-                  <span className="info-label">📧 Email</span>
-                  <span className="info-value">{user.email}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">💰 Currency</span>
-                  <span className="info-value">{user.preferences?.currency || 'USD'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">🔔 Notifications</span>
-                  <span className="info-value">{user.preferences?.notifications !== false ? '✅ On' : '❌ Off'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">📅 Member Since</span>
-                  <span className="info-value">{user.memberSince || 'January 2024'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">🎯 Plan</span>
-                  <span className="info-value">{user.plan || 'Standard'}</span>
-                </div>
-              </div>
-              
-              {userTrips && userTrips.length > 0 && (
-                <div className="profile-section">
-                  <h4>Recent Trips</h4>
-                  {userTrips.slice(0, 3).map((trip) => (
-                    <div key={trip.id} className="profile-trip-item">
-                      <span>✈️ {trip.destination}</span>
-                      <span>{trip.days} days</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {userBookings && userBookings.length > 0 && (
-                <div className="profile-section">
-                  <h4>Recent Safari Bookings</h4>
-                  {userBookings.slice(0, 3).map((booking) => (
-                    <div key={booking.id} className="profile-trip-item">
-                      <span>🦁 {booking.packageName}</span>
-                      <span className={`status-${booking.status}`}>{booking.status}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="profile-actions">
-                <button className="profile-edit" onClick={() => setIsEditing(true)}>
-                  <FontAwesomeIcon icon={faEdit} /> Edit Profile
-                </button>
-                <button className="profile-logout" onClick={onLogout}>
-                  <FontAwesomeIcon icon={faSignOutAlt} /> Logout
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // --- Sidebar Component ---
 function Sidebar({ isOpen, onToggle, activeTab, setActiveTab, chatHistory, loadChatHistory, clearChatHistory, userTrips, userBookings, user }) {
   return (
     <>
-      {/* Toggle Button */}
       <button 
         className={`sidebar-toggle ${isOpen ? 'open' : ''}`}
         onClick={onToggle}
@@ -592,7 +408,6 @@ function Sidebar({ isOpen, onToggle, activeTab, setActiveTab, chatHistory, loadC
         <FontAwesomeIcon icon={isOpen ? faChevronLeft : faBars} />
       </button>
 
-      {/* Sidebar */}
       <div className={`sidebar ${isOpen ? 'open' : ''}`} style={{
         position: 'fixed',
         top: 0,
@@ -643,7 +458,6 @@ function Sidebar({ isOpen, onToggle, activeTab, setActiveTab, chatHistory, loadC
           )}
         </div>
 
-        {/* Tabs */}
         <div className="sidebar-tabs" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -715,7 +529,6 @@ function Sidebar({ isOpen, onToggle, activeTab, setActiveTab, chatHistory, loadC
           </button>
         </div>
 
-        {/* Content */}
         <div className="sidebar-content" style={{ flex: 1, overflowY: 'auto' }}>
           {activeTab === 'chat' && (
             <>
@@ -750,14 +563,6 @@ function Sidebar({ isOpen, onToggle, activeTab, setActiveTab, chatHistory, loadC
                       display: 'flex',
                       gap: '0.8rem',
                       alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                      e.currentTarget.style.borderColor = 'rgba(111, 195, 255, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)';
                     }}
                   >
                     <div className="sidebar-item-icon" style={{ color: '#6fc3ff' }}>
@@ -916,7 +721,7 @@ function Sidebar({ isOpen, onToggle, activeTab, setActiveTab, chatHistory, loadC
   );
 }
 
-// --- Safari Packages Data (from Firestore) ---
+// --- Safari Packages Data ---
 const safariPackages = {
   'budget': {
     id: 'budget',
@@ -1112,6 +917,7 @@ function App() {
     const saved = localStorage.getItem('recentSearches');
     return saved ? JSON.parse(saved) : [];
   });
+  const [isVoiceFirstTime, setIsVoiceFirstTime] = useState(true);
   
   // Sidebar State
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -1136,21 +942,33 @@ function App() {
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  const COMPANY_URL = 'https://www.wanderly.com';
-  const BOOKING_URL = 'https://www.wanderly.com/book';
-  const SAFARI_URL = 'https://www.trawellsafaris.com';
-  const SAFARI_BOOKING_URL = 'https://www.trawellsafaris.com/book';
+  // --- Booking Functions ---
+  const openBookingSite = (url) => {
+    window.open(url, '_blank');
+  };
+
+  const searchOnBookingSite = (siteKey, destination) => {
+    const site = BOOKING_SITES[siteKey];
+    if (!site) return null;
+    
+    let searchUrl = site.searchUrl;
+    // Format the search URL based on the site
+    if (destination) {
+      searchUrl = site.searchUrl + encodeURIComponent(destination);
+    }
+    openBookingSite(searchUrl);
+    return searchUrl;
+  };
 
   // --- Save chat history effect ---
   useEffect(() => {
-    // Save messages to history when they change
     if (messages.length > 2) {
       const history = messages.filter(msg => msg.type === 'user' || msg.type === 'ai');
       if (history.length > 0) {
         const historyItem = {
           id: Date.now(),
           timestamp: new Date().toISOString(),
-          messages: history.slice(-6), // Keep last 6 messages
+          messages: history.slice(-6),
           preview: history[history.length - 1]?.content?.substring(0, 60) || 'Chat'
         };
         setChatHistory(prev => {
@@ -1164,9 +982,8 @@ function App() {
 
   // --- Firebase Auth Listener ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChange(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in - get real data from Firestore
         const { data: profile, error } = await getUserProfile(firebaseUser.uid);
         if (!error && profile) {
           const userData = {
@@ -1186,19 +1003,15 @@ function App() {
           setPlan(userData.plan);
           setDarkMode(userData.preferences?.darkMode !== false);
           
-          // Load user trips from Firestore
           const { trips } = await getUserTrips(firebaseUser.uid);
           setUserTrips(trips || []);
           
-          // Load user safari bookings from Firestore
           const { bookings } = await getUserSafariBookings(firebaseUser.uid);
           setUserBookings(bookings || []);
           
-          // Save user to localStorage for persistence
           localStorage.setItem('wanderly_user', JSON.stringify(userData));
         }
       } else {
-        // User is signed out - clear all data
         setUser(null);
         setIsLoggedIn(false);
         setUserTrips([]);
@@ -1208,7 +1021,11 @@ function App() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Save recent searches to localStorage
@@ -1223,7 +1040,7 @@ function App() {
       : 'linear-gradient(145deg, #f0f4f8 0%, #d9e2ec 100%)';
   }, [darkMode]);
 
-  // --- Auth Functions (All use Firebase) ---
+  // --- Auth Functions ---
   const handleLogin = async (email, password) => {
     const { user: firebaseUser, error } = await loginUser(email, password);
     if (error) {
@@ -1333,18 +1150,16 @@ function App() {
     const planNames = { free: 'Standard', basic: 'Premium', pro: 'Luxury' };
     setMessages(prev => [...prev, { 
       type: 'ai', 
-      content: `🎉 **Upgraded to ${planNames[newPlan]} Plan!**\n\n✅ More features unlocked\n✅ Priority support\n✅ Exclusive safari deals\n🔗 Continue booking: ${BOOKING_URL}` 
+      content: `🎉 **Upgraded to ${planNames[newPlan]} Plan!**\n\n✅ More features unlocked\n✅ Priority support\n✅ Exclusive safari deals\n🔗 Start booking: https://www.booking.com` 
     }]);
   };
 
   // --- Sidebar Functions ---
   const loadChatHistory = (historyItem) => {
     setMessages(prev => {
-      // Start with welcome messages
       const welcomeMessages = [
         { type: 'bot', content: "🦁 Welcome back to Wanderly Travel! I'm your AI travel consultant." }
       ];
-      // Add the history messages
       return [...welcomeMessages, ...historyItem.messages];
     });
     setActiveTab('chat');
@@ -1390,7 +1205,9 @@ function App() {
       `Currency: ${itinerary.currency}\n` +
       `Visa: ${itinerary.visa}\n\n` +
       `=== BOOKING ===\n` +
-      `Book now: ${BOOKING_URL}\n\n` +
+      `🏨 Booking.com: https://www.booking.com\n` +
+      `✈️ Skyscanner: https://www.skyscanner.net\n` +
+      `🦁 Trawell Safaris: https://www.trawellsafaris.com\n\n` +
       `Generated by Wanderly Travel AI Assistant`;
     
     const blob = new Blob([text], { type: 'text/plain' });
@@ -1424,7 +1241,7 @@ function App() {
   const handleQuickAction = (action) => {
     const actions = {
       'flights': 'Book flight to',
-      'hotels': 'Find hotel in',
+      'hotels': 'Find hotels in',
       'visa': 'Visa for',
       'itinerary': 'Plan a trip to',
       'safari': 'Plan a safari to',
@@ -1447,11 +1264,293 @@ function App() {
           `📅 Best Time: ${pkg.bestTime}\n\n` +
           `✅ **Includes:**\n${pkg.includes.map(item => `• ${item}`).join('\n')}\n\n` +
           `🎯 **Activities:**\n${pkg.activities.map(item => `• ${item}`).join('\n')}\n\n` +
-          `🔗 **Book this safari:** ${SAFARI_BOOKING_URL}\n\n` +
+          `🔗 **Book this safari:** https://www.trawellsafaris.com/book-now\n\n` +
           `💡 This safari is proudly offered by Trawell Safaris - Africa's Safari Experts! 🐘` 
       }]);
     }
   };
+
+  // --- Voice Assistant with Greeting ---
+  const toggleVoice = () => {
+    if (isListening) {
+      recognitionRef.current?.abort();
+      setIsListening(false);
+      window.speechSynthesis.cancel();
+    } else if (recognitionRef.current) {
+      recognitionRef.current.start();
+      setIsListening(true);
+      
+      const greeting = "Hello! How may I help you today?";
+      speakText(greeting);
+      
+      if (isVoiceFirstTime) {
+        setIsVoiceFirstTime(false);
+        setMessages(prev => [...prev, { 
+          type: 'ai', 
+          content: `🎤 **Voice Assistant Activated**\n\nHello! How may I help you today?` 
+        }]);
+      }
+    } else {
+      setMessages(prev => [...prev, { 
+        type: 'ai', 
+        content: '🔊 Voice recognition not supported. Please use Chrome or Edge.' 
+      }]);
+    }
+  };
+
+  // --- Voice recognition setup ---
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join('');
+        
+        if (event.results[0].isFinal) {
+          setInputValue(transcript);
+          
+          const lower = transcript.toLowerCase();
+          let destination = null;
+          const destMatch = transcript.match(/in\s+([a-zA-Z\s]+)/i) || 
+                           transcript.match(/to\s+([a-zA-Z\s]+)/i) ||
+                           transcript.match(/at\s+([a-zA-Z\s]+)/i);
+          if (destMatch) {
+            destination = destMatch[1].trim();
+          }
+          
+          // --- HOTEL SITES ---
+          if (lower.includes('booking') || lower.includes('booking.com')) {
+            const url = destination ? searchOnBookingSite('booking', destination) : BOOKING_SITES.booking.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🏨 **Opening Booking.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Booking.com'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('agoda')) {
+            const url = destination ? searchOnBookingSite('agoda', destination) : BOOKING_SITES.agoda.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🏩 **Opening Agoda${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Agoda'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('expedia')) {
+            const url = destination ? searchOnBookingSite('expedia', destination) : BOOKING_SITES.expedia.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🌍 **Opening Expedia${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Expedia'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('hotels.com') || lower.includes('hotelscom')) {
+            const url = destination ? searchOnBookingSite('hotelscom', destination) : BOOKING_SITES.hotelscom.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🏨 **Opening Hotels.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Hotels.com'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('airbnb')) {
+            const url = destination ? searchOnBookingSite('airbnb', destination) : BOOKING_SITES.airbnb.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🏠 **Opening Airbnb${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for stays in ' + destination : 'Opening Airbnb'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('tripadvisor')) {
+            const url = destination ? searchOnBookingSite('tripadvisor', destination) : BOOKING_SITES.tripadvisor.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `📝 **Opening TripAdvisor${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching reviews for ' + destination : 'Opening TripAdvisor'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          // --- FLIGHT SITES ---
+          if (lower.includes('skyscanner')) {
+            const url = destination ? searchOnBookingSite('skyscanner', destination) : BOOKING_SITES.skyscanner.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `✈️ **Opening Skyscanner${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching flights to ' + destination : 'Opening Skyscanner'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('kayak')) {
+            const url = destination ? searchOnBookingSite('kayak', destination) : BOOKING_SITES.kayak.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🔍 **Opening Kayak${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Comparing deals for ' + destination : 'Opening Kayak'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('momondo')) {
+            const url = destination ? searchOnBookingSite('momondo', destination) : BOOKING_SITES.momondo.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🌐 **Opening Momondo${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching flights to ' + destination : 'Opening Momondo'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('cheapflights')) {
+            const url = destination ? searchOnBookingSite('cheapflights', destination) : BOOKING_SITES.cheapflights.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `💰 **Opening CheapFlights${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Finding budget flights to ' + destination : 'Opening CheapFlights'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          // --- SAFARI & TOUR SITES ---
+          if (lower.includes('trawell')) {
+            openBookingSite(BOOKING_SITES.trawell.url);
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🦁 **Opening Trawell Safaris...**\n\nAfrica's Safari Experts!\n\n🔗 ${BOOKING_SITES.trawell.url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('viator')) {
+            const url = destination ? searchOnBookingSite('viator', destination) : BOOKING_SITES.viator.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🎯 **Opening Viator${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching tours in ' + destination : 'Opening Viator'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('getyourguide')) {
+            const url = destination ? searchOnBookingSite('getyourguide', destination) : BOOKING_SITES.getyourguide.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `📸 **Opening GetYourGuide${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Finding experiences in ' + destination : 'Opening GetYourGuide'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          // --- CAR RENTAL SITES ---
+          if (lower.includes('rentalcars')) {
+            const url = destination ? searchOnBookingSite('rentalcars', destination) : BOOKING_SITES.rentalcars.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🚗 **Opening Rentalcars.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching car rentals in ' + destination : 'Opening Rentalcars.com'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('europcar')) {
+            const url = destination ? searchOnBookingSite('europcar', destination) : BOOKING_SITES.europcar.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🚙 **Opening Europcar${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching car hire in ' + destination : 'Opening Europcar'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          // --- GENERAL BOOKING SITES ---
+          if (lower.includes('lastminute')) {
+            const url = destination ? searchOnBookingSite('lastminute', destination) : BOOKING_SITES.lastminute.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `⏰ **Opening Lastminute.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Finding deals for ' + destination : 'Opening Lastminute.com'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          if (lower.includes('travelocity')) {
+            const url = destination ? searchOnBookingSite('travelocity', destination) : BOOKING_SITES.travelocity.url;
+            setMessages(prev => [...prev, { type: 'user', content: transcript }]);
+            setMessages(prev => [...prev, { 
+              type: 'ai', 
+              content: `🧳 **Opening Travelocity${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching travel packages for ' + destination : 'Opening Travelocity'}\n\n🔗 ${url}` 
+            }]);
+            setIsListening(false);
+            return;
+          }
+          
+          // Handle other voice commands
+          handleSend(transcript);
+          setIsListening(false);
+        } else {
+          setInputValue(transcript);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setMessages(prev => [...prev, { 
+            type: 'ai', 
+            content: '🔊 Microphone access denied. Please allow microphone access and try again.' 
+          }]);
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   const handleSend = (forcedInput = null) => {
     const userMsg = (forcedInput || inputValue).trim();
@@ -1467,7 +1566,159 @@ function App() {
       let response = '';
       let destData = null;
       let destKey = null;
+      
+      let destination = null;
+      const destMatch = userMsg.match(/in\s+([a-zA-Z\s]+)/i) || 
+                       userMsg.match(/to\s+([a-zA-Z\s]+)/i) ||
+                       userMsg.match(/at\s+([a-zA-Z\s]+)/i);
+      if (destMatch) {
+        destination = destMatch[1].trim();
+      }
 
+      // --- ALL BOOKING SITE COMMANDS ---
+      
+      // HOTEL SITES
+      if (lower.includes('booking') || lower.includes('booking.com')) {
+        const url = destination ? searchOnBookingSite('booking', destination) : BOOKING_SITES.booking.url;
+        response = `🏨 **Opening Booking.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Booking.com'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('agoda')) {
+        const url = destination ? searchOnBookingSite('agoda', destination) : BOOKING_SITES.agoda.url;
+        response = `🏩 **Opening Agoda${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Agoda'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('expedia')) {
+        const url = destination ? searchOnBookingSite('expedia', destination) : BOOKING_SITES.expedia.url;
+        response = `🌍 **Opening Expedia${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Expedia'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('hotels.com') || lower.includes('hotelscom')) {
+        const url = destination ? searchOnBookingSite('hotelscom', destination) : BOOKING_SITES.hotelscom.url;
+        response = `🏨 **Opening Hotels.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for hotels in ' + destination : 'Opening Hotels.com'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('airbnb')) {
+        const url = destination ? searchOnBookingSite('airbnb', destination) : BOOKING_SITES.airbnb.url;
+        response = `🏠 **Opening Airbnb${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching for stays in ' + destination : 'Opening Airbnb'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('tripadvisor')) {
+        const url = destination ? searchOnBookingSite('tripadvisor', destination) : BOOKING_SITES.tripadvisor.url;
+        response = `📝 **Opening TripAdvisor${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching reviews for ' + destination : 'Opening TripAdvisor'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      // FLIGHT SITES
+      if (lower.includes('skyscanner')) {
+        const url = destination ? searchOnBookingSite('skyscanner', destination) : BOOKING_SITES.skyscanner.url;
+        response = `✈️ **Opening Skyscanner${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching flights to ' + destination : 'Opening Skyscanner'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('kayak')) {
+        const url = destination ? searchOnBookingSite('kayak', destination) : BOOKING_SITES.kayak.url;
+        response = `🔍 **Opening Kayak${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Comparing deals for ' + destination : 'Opening Kayak'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('momondo')) {
+        const url = destination ? searchOnBookingSite('momondo', destination) : BOOKING_SITES.momondo.url;
+        response = `🌐 **Opening Momondo${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching flights to ' + destination : 'Opening Momondo'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('cheapflights')) {
+        const url = destination ? searchOnBookingSite('cheapflights', destination) : BOOKING_SITES.cheapflights.url;
+        response = `💰 **Opening CheapFlights${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Finding budget flights to ' + destination : 'Opening CheapFlights'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      // SAFARI & TOUR SITES
+      if (lower.includes('trawell')) {
+        openBookingSite(BOOKING_SITES.trawell.url);
+        response = `🦁 **Opening Trawell Safaris...**\n\nAfrica's Safari Experts!\n\n🔗 ${BOOKING_SITES.trawell.url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('viator')) {
+        const url = destination ? searchOnBookingSite('viator', destination) : BOOKING_SITES.viator.url;
+        response = `🎯 **Opening Viator${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching tours in ' + destination : 'Opening Viator'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('getyourguide')) {
+        const url = destination ? searchOnBookingSite('getyourguide', destination) : BOOKING_SITES.getyourguide.url;
+        response = `📸 **Opening GetYourGuide${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Finding experiences in ' + destination : 'Opening GetYourGuide'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      // CAR RENTAL SITES
+      if (lower.includes('rentalcars')) {
+        const url = destination ? searchOnBookingSite('rentalcars', destination) : BOOKING_SITES.rentalcars.url;
+        response = `🚗 **Opening Rentalcars.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching car rentals in ' + destination : 'Opening Rentalcars.com'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('europcar')) {
+        const url = destination ? searchOnBookingSite('europcar', destination) : BOOKING_SITES.europcar.url;
+        response = `🚙 **Opening Europcar${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching car hire in ' + destination : 'Opening Europcar'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      // GENERAL BOOKING SITES
+      if (lower.includes('lastminute')) {
+        const url = destination ? searchOnBookingSite('lastminute', destination) : BOOKING_SITES.lastminute.url;
+        response = `⏰ **Opening Lastminute.com${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Finding deals for ' + destination : 'Opening Lastminute.com'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+      
+      if (lower.includes('travelocity')) {
+        const url = destination ? searchOnBookingSite('travelocity', destination) : BOOKING_SITES.travelocity.url;
+        response = `🧳 **Opening Travelocity${destination ? ' for ' + destination : ''}...**\n\n${destination ? 'Searching travel packages for ' + destination : 'Opening Travelocity'}\n\n🔗 ${url}`;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { type: 'ai', content: response }]);
+        return;
+      }
+
+      // --- Continue with existing handlers ---
       for (const [key, data] of Object.entries(travelData)) {
         if (lower.includes(key) || key.split(' ').some(word => lower.includes(word))) {
           destData = data;
@@ -1490,7 +1741,7 @@ function App() {
         getWeather(destKey);
       }
 
-      // --- Handle different queries ---
+      // --- Existing handlers continue here ---
       if (lower.includes('login') || lower.includes('sign in')) {
         setShowAuth(true);
         response = `🔐 Opening login window...\n\nPlease sign in to access all features including:\n• Save itineraries\n• Book safaris\n• Track your trips\n• Get personalized recommendations`;
@@ -1507,7 +1758,7 @@ function App() {
           response = `🔒 You're not signed in. Click the user icon in the top right or say "Login" to get started!`;
         }
       }
-      else if (lower.includes('safari') || lower.includes('trawell') || lower.includes('wildlife') || lower.includes('animal')) {
+      else if (lower.includes('safari') || lower.includes('wildlife') || lower.includes('animal')) {
         if (lower.includes('budget')) {
           handleSafariBooking('budget');
           setIsTyping(false);
@@ -1534,7 +1785,7 @@ function App() {
         response += `   • Maasai Mara, Serengeti, Zanzibar\n`;
         response += `   • 5-star lodges & private charters\n\n`;
         response += `🎯 **Try:** "Budget safari" or "Luxury safari"\n`;
-        response += `🔗 **Book with Trawell Safaris:** ${SAFARI_BOOKING_URL}`;
+        response += `🔗 **Book with Trawell Safaris:** https://www.trawellsafaris.com`;
         
         setShowSafariPackages(true);
       }
@@ -1551,9 +1802,6 @@ function App() {
           response = `🌤️ **Weather Service**\n\nPlease specify a destination (e.g., "Weather in Paris")`;
         }
       }
-      else if (lower.includes('book') || lower.includes('booking')) {
-        response = `📋 **Ready to Book Your Trip?**\n\n✈️ **Flights**: ${BOOKING_URL}/flights\n🏨 **Hotels**: ${BOOKING_URL}/hotels\n🦁 **Safaris**: ${SAFARI_BOOKING_URL}\n🌍 **Packages**: ${BOOKING_URL}/packages\n🛂 **Visa**: ${BOOKING_URL}/visa\n\n💡 Tell me a destination or "Plan a safari" for more info!`;
-      }
       else if (lower.includes('itinerary') || lower.includes('plan') || lower.includes('trip')) {
         if (destData) {
           const days = plan === 'pro' ? 5 : plan === 'basic' ? 4 : 3;
@@ -1569,10 +1817,11 @@ function App() {
           
           if (lower.includes('safari')) {
             response += `🦁 **Safari Option**: Add a safari extension with Trawell Safaris!\n`;
-            response += `🔗 ${SAFARI_URL}\n\n`;
+            response += `🔗 https://www.trawellsafaris.com\n\n`;
           }
           
-          response += `🔗 **Book now**: ${BOOKING_URL}`;
+          response += `🔗 **Book hotels**: https://www.booking.com\n`;
+          response += `✈️ **Book flights**: https://www.skyscanner.net`;
           
           setItinerary({
             destination: destData.name,
@@ -1583,7 +1832,6 @@ function App() {
             visa: destData.visaRequired
           });
           
-          // Save trip to Firestore if user is logged in
           if (isLoggedIn && user) {
             saveTrip(user.uid, {
               destination: destData.name,
@@ -1603,9 +1851,9 @@ function App() {
           response = `🛂 **Visa for ${destData.name}**\n\n`;
           response += `📋 **Type**: ${destData.visaRequired}\n`;
           response += `⏰ **Processing**: ${plan === 'pro' ? '24-48 hours (express)' : '5-10 business days'}\n`;
-          response += `📄 **Documents**:\n• Valid passport (6 months validity)\n• 2 passport photos\n• Hotel booking\n• Flight itinerary\n• Bank statements\n\n🔗 Apply: ${BOOKING_URL}/visa`;
+          response += `📄 **Documents**:\n• Valid passport (6 months validity)\n• 2 passport photos\n• Hotel booking\n• Flight itinerary\n• Bank statements\n\n🔗 Check requirements: https://www.tripadvisor.com`;
         } else {
-          response = `🛂 **Visa Services**\n\nI can help with visa requirements for any destination.\n\n📍 Specify a destination (e.g., "Visa for Kenya")\n🔗 ${BOOKING_URL}/visa`;
+          response = `🛂 **Visa Services**\n\nI can help with visa requirements for any destination.\n\n📍 Specify a destination (e.g., "Visa for Kenya")`;
         }
       }
       else if (lower.includes('checklist') || lower.includes('pack')) {
@@ -1620,34 +1868,16 @@ function App() {
           response = `📄 **Export Itinerary**\n\nPlease create an itinerary first by asking "Plan a trip to [destination]"`;
         }
       }
-      else if (lower.includes('trawell')) {
-        response = `🦁 **Trawell Safaris - Africa's Safari Experts**\n\n`;
-        response += `🌍 **About Us**\n`;
-        response += `Trawell Safaris is a premier African safari operator specializing in unforgettable wildlife experiences.\n\n`;
-        response += `🏆 **Why Choose Trawell?**\n`;
-        response += `• 15+ years of safari experience\n`;
-        response += `• Expert local guides\n`;
-        response += `• Customized safari packages\n`;
-        response += `• Sustainable tourism practices\n`;
-        response += `• 5-star customer reviews\n\n`;
-        response += `📍 **Destinations**\n`;
-        response += `• Kenya: Maasai Mara, Amboseli, Samburu\n`;
-        response += `• Tanzania: Serengeti, Ngorongoro, Tarangire\n`;
-        response += `• Uganda: Gorilla Trekking\n`;
-        response += `• Rwanda: Gorilla Trekking\n\n`;
-        response += `🔗 **Website**: ${SAFARI_URL}\n`;
-        response += `📞 **Contact**: +254 700 123 456`;
-      }
       else if (destData) {
-        response = `📍 **${destData.name}**\n\n${destData.description}\n\n⭐ Rating: ${destData.rating}/5.0\n💰 Price: ${destData.priceRange}\n📅 Best Time: ${destData.bestTime}\n🛂 Visa: ${destData.visaRequired}\n💵 Currency: ${destData.currency}\n🗣️ Language: ${destData.language}\n🌤️ Weather: ${destData.weather}\n\n🏛️ **Top Attractions**\n${destData.attractions.map(a => `• ${a}`).join('\n')}\n\n🎯 **Activities**\n${destData.activities.map(a => `• ${a}`).join('\n')}\n\n🔗 **Book now**: ${BOOKING_URL}`;
+        response = `📍 **${destData.name}**\n\n${destData.description}\n\n⭐ Rating: ${destData.rating}/5.0\n💰 Price: ${destData.priceRange}\n📅 Best Time: ${destData.bestTime}\n🛂 Visa: ${destData.visaRequired}\n💵 Currency: ${destData.currency}\n🗣️ Language: ${destData.language}\n🌤️ Weather: ${destData.weather}\n\n🏛️ **Top Attractions**\n${destData.attractions.map(a => `• ${a}`).join('\n')}\n\n🎯 **Activities**\n${destData.activities.map(a => `• ${a}`).join('\n')}\n\n🔗 **Book hotels**: https://www.booking.com\n✈️ **Book flights**: https://www.skyscanner.net`;
         
         if (destKey === 'maasai mara' || destKey === 'serengeti') {
-          response += `\n\n🦁 **Safari Tip**: Enhance your experience with a hot air balloon safari over the plains!\n`;
-          response += `🔗 Book with Trawell Safaris: ${SAFARI_URL}`;
+          response += `\n\n🦁 **Safari Tip**: Enhance your experience with a safari from Trawell Safaris!\n`;
+          response += `🔗 https://www.trawellsafaris.com`;
         }
       }
       else {
-        response = `🌍 **How can I help you travel better?**\n\n✈️ **Try these commands:**\n\n• "Tell me about Paris" - Destination info\n• "Plan a trip to Bali" - Itinerary\n• "Plan a safari" - Safari packages\n• "Budget safari" - View budget safari\n• "Luxury safari" - View luxury safari\n• "Visa for Kenya" - Visa requirements\n• "Weather in Tokyo" - Weather info\n• "Travel checklist" - Pre-trip planning\n• "Trawell Safaris" - About safari partner\n\n🔗 **Start booking**: ${BOOKING_URL}\n🦁 **Safaris**: ${SAFARI_URL}\n\n👤 **Account**: Say "Login" or "Sign up" to create your account!`;
+        response = `🌍 **How can I help you travel better?**\n\n🏨 **Hotels & Accommodations:**\n• Booking.com: "Open Booking.com"\n• Agoda: "Open Agoda"\n• Expedia: "Open Expedia"\n• Hotels.com: "Open Hotels.com"\n• Airbnb: "Open Airbnb"\n• TripAdvisor: "Open TripAdvisor"\n\n✈️ **Flights:**\n• Skyscanner: "Open Skyscanner"\n• Kayak: "Open Kayak"\n• Momondo: "Open Momondo"\n• CheapFlights: "Open CheapFlights"\n\n🦁 **Safaris & Tours:**\n• Trawell Safaris: "Open Trawell"\n• Viator: "Open Viator"\n• GetYourGuide: "Open GetYourGuide"\n\n🚗 **Car Rentals:**\n• Rentalcars.com: "Open Rentalcars"\n• Europcar: "Open Europcar"\n\n🧳 **Packages & Deals:**\n• Lastminute.com: "Open Lastminute"\n• Travelocity: "Open Travelocity"\n\n💡 **Try:** "Open Booking.com Paris" or "Find hotels in Paris"`;
       }
       
       setIsTyping(false);
@@ -1657,21 +1887,6 @@ function App() {
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') handleSend();
-  };
-
-  const toggleVoice = () => {
-    if (isListening) {
-      recognitionRef.current?.abort();
-      setIsListening(false);
-    } else if (recognitionRef.current) {
-      recognitionRef.current.start();
-      setIsListening(true);
-    } else {
-      setMessages(prev => [...prev, { 
-        type: 'ai', 
-        content: '🔊 Voice recognition not supported. Please use Chrome or Edge.' 
-      }]);
-    }
   };
 
   const toggleDarkMode = () => {
@@ -1685,45 +1900,6 @@ function App() {
       updateUserProfile(user.uid, { preferences: updatedUser.preferences });
     }
   };
-
-  // Voice recognition
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0].transcript)
-          .join('');
-        
-        if (event.results[0].isFinal) {
-          setInputValue(transcript);
-          handleSend(transcript);
-          setIsListening(false);
-        } else {
-          setInputValue(transcript);
-        }
-      };
-
-      recognitionRef.current.onerror = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1753,7 +1929,6 @@ function App() {
 
   return (
     <div className={`app-container ${darkMode ? 'dark' : 'light'}`}>
-      {/* Sidebar */}
       <Sidebar 
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -1847,7 +2022,7 @@ function App() {
             )}
 
             <a 
-              href={BOOKING_URL} 
+              href="https://www.booking.com" 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ 
@@ -1906,7 +2081,8 @@ function App() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '1rem'
+                    fontSize: '1rem',
+                    animation: isListening ? 'pulse-voice 1s infinite' : 'none'
                   }}
                   title={isListening ? 'Stop listening' : 'Start voice input'}
                 >
@@ -1943,7 +2119,7 @@ function App() {
             <div className="chat-input-area">
               <input 
                 type="text" 
-                placeholder={isListening ? "🎤 Listening..." : "Ask about destinations, safaris, itineraries..."}
+                placeholder={isListening ? "🎤 Listening..." : "Ask about destinations, hotels, flights, safaris..."}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -1955,11 +2131,51 @@ function App() {
             </div>
 
             <div className="quick-actions">
-              <button onClick={() => handleQuickAction('flights')}><FontAwesomeIcon icon={faPlane} /> Flights</button>
-              <button onClick={() => handleQuickAction('hotels')}><FontAwesomeIcon icon={faHotel} /> Hotels</button>
-              <button onClick={() => handleQuickAction('safari')}><FontAwesomeIcon icon={faPaw} /> Safari</button>
-              <button onClick={() => handleQuickAction('itinerary')}><FontAwesomeIcon icon={faRoute} /> Plan</button>
-              <button onClick={() => setShowChecklist(!showChecklist)}><FontAwesomeIcon icon={faClipboard} /> Checklist</button>
+              <button onClick={() => {
+                const dest = prompt('Where are you looking for hotels?');
+                if (dest) {
+                  const url = searchOnBookingSite('booking', dest);
+                  setMessages(prev => [...prev, { 
+                    type: 'ai', 
+                    content: `🏨 **Opening Booking.com for ${dest}...**\n\n🔗 ${url}` 
+                  }]);
+                }
+              }}>
+                <FontAwesomeIcon icon={faHotel} /> Hotels
+              </button>
+              <button onClick={() => {
+                const dest = prompt('Where are you flying to?');
+                if (dest) {
+                  const url = searchOnBookingSite('skyscanner', dest);
+                  setMessages(prev => [...prev, { 
+                    type: 'ai', 
+                    content: `✈️ **Opening Skyscanner for ${dest}...**\n\n🔗 ${url}` 
+                  }]);
+                }
+              }}>
+                <FontAwesomeIcon icon={faPlane} /> Flights
+              </button>
+              <button onClick={() => {
+                openBookingSite(BOOKING_SITES.trawell.url);
+                setMessages(prev => [...prev, { 
+                  type: 'ai', 
+                  content: `🦁 **Opening Trawell Safaris...**\n\nAfrica's Safari Experts!` 
+                }]);
+              }}>
+                <FontAwesomeIcon icon={faPaw} /> Safari
+              </button>
+              <button onClick={() => {
+                openBookingSite(BOOKING_SITES.airbnb.url);
+                setMessages(prev => [...prev, { 
+                  type: 'ai', 
+                  content: `🏠 **Opening Airbnb...**\n\nFind unique stays worldwide!` 
+                }]);
+              }}>
+                <FontAwesomeIcon icon={faHome} /> Airbnb
+              </button>
+              <button onClick={() => handleQuickAction('itinerary')}>
+                <FontAwesomeIcon icon={faRoute} /> Plan
+              </button>
             </div>
 
             <div className="quick-suggestions">
@@ -1968,23 +2184,25 @@ function App() {
                   🔄 {search}
                 </span>
               ))}
-              <span onClick={() => { setInputValue('Tell me about Paris'); handleSend('Tell me about Paris'); }}>
-                <FontAwesomeIcon icon={faUmbrellaBeach} /> Paris
+              <span onClick={() => { setInputValue('Open Booking.com Paris'); handleSend('Open Booking.com Paris'); }}>
+                🏨 Booking Paris
+              </span>
+              <span onClick={() => { setInputValue('Open Skyscanner Tokyo'); handleSend('Open Skyscanner Tokyo'); }}>
+                ✈️ Skyscanner Tokyo
+              </span>
+              <span onClick={() => { setInputValue('Open Trawell'); handleSend('Open Trawell'); }}>
+                🦁 Trawell Safari
+              </span>
+              <span onClick={() => { setInputValue('Open Airbnb Bali'); handleSend('Open Airbnb Bali'); }}>
+                🏠 Airbnb Bali
               </span>
               <span onClick={() => { setInputValue('Plan a safari'); handleSend('Plan a safari'); }}>
                 🦁 Safari
-              </span>
-              <span onClick={() => { setInputValue('Budget safari'); handleSend('Budget safari'); }}>
-                <FontAwesomeIcon icon={faCampground} /> Budget Safari
-              </span>
-              <span onClick={() => { setInputValue('Luxury safari'); handleSend('Luxury safari'); }}>
-                <FontAwesomeIcon icon={faGem} /> Luxury Safari
               </span>
             </div>
           </div>
         </div>
 
-        {/* Auth Modal */}
         <AuthModal 
           isOpen={showAuth}
           onClose={() => setShowAuth(false)}
@@ -1993,7 +2211,6 @@ function App() {
           onResetPassword={handleResetPassword}
         />
 
-        {/* User Profile Modal */}
         <UserProfile 
           user={user}
           onLogout={handleLogout}
@@ -2063,7 +2280,13 @@ function App() {
                     ))}
                   </ul>
                   <button
-                    onClick={() => handleSafariBooking(pkg.id)}
+                    onClick={() => {
+                      openBookingSite('https://www.trawellsafaris.com/book-now');
+                      setMessages(prev => [...prev, { 
+                        type: 'ai', 
+                        content: `🦁 **Redirecting to Trawell Safaris booking page...**\n\nYou'll be able to book the ${pkg.name} there!` 
+                      }]);
+                    }}
                     style={{
                       width: '100%',
                       padding: '0.5rem',
@@ -2083,7 +2306,7 @@ function App() {
             </div>
             <div style={{ textAlign: 'center', marginTop: '0.8rem' }}>
               <a 
-                href={SAFARI_URL} 
+                href="https://www.trawellsafaris.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 style={{ color: '#6fc3ff', textDecoration: 'none', fontSize: '0.8rem' }}
@@ -2093,6 +2316,160 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* ALL BOOKING SITES CARDS */}
+        <div className="booking-sites-section" style={{
+          marginTop: '1.5rem',
+          padding: '1.5rem',
+          background: 'rgba(0, 0, 0, 0.2)',
+          borderRadius: '1.5rem',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          animation: 'slideUp 0.5s ease'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h4 style={{ color: '#f0f7fe' }}>
+              <FontAwesomeIcon icon={faGlobe} style={{ color: '#6fc3ff', marginRight: '0.5rem' }} />
+              🌐 All Booking Sites
+            </h4>
+            <span style={{ color: '#8bb3da', fontSize: '0.7rem' }}>Click to open</span>
+          </div>
+          
+          <div style={{ marginBottom: '0.8rem' }}>
+            <h5 style={{ color: '#8bb3da', fontSize: '0.8rem', marginBottom: '0.5rem' }}>🏨 Hotels & Accommodations</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem' }}>
+              {['booking', 'agoda', 'expedia', 'hotelscom', 'airbnb', 'tripadvisor'].map((key) => {
+                const site = BOOKING_SITES[key];
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      borderRadius: '0.8rem',
+                      padding: '0.6rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s'
+                    }}
+                    onClick={() => {
+                      openBookingSite(site.url);
+                      setMessages(prev => [...prev, { 
+                        type: 'ai', 
+                        content: `${site.icon} **Opening ${site.name}...**\n\n${site.description}\n\n🔗 ${site.url}` 
+                      }]);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    <div style={{ fontSize: '1.2rem' }}>{site.icon}</div>
+                    <div style={{ color: '#f0f7fe', fontSize: '0.7rem' }}>{site.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '0.8rem' }}>
+            <h5 style={{ color: '#8bb3da', fontSize: '0.8rem', marginBottom: '0.5rem' }}>✈️ Flights</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem' }}>
+              {['skyscanner', 'kayak', 'momondo', 'cheapflights'].map((key) => {
+                const site = BOOKING_SITES[key];
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      borderRadius: '0.8rem',
+                      padding: '0.6rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s'
+                    }}
+                    onClick={() => {
+                      openBookingSite(site.url);
+                      setMessages(prev => [...prev, { 
+                        type: 'ai', 
+                        content: `${site.icon} **Opening ${site.name}...**\n\n${site.description}\n\n🔗 ${site.url}` 
+                      }]);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    <div style={{ fontSize: '1.2rem' }}>{site.icon}</div>
+                    <div style={{ color: '#f0f7fe', fontSize: '0.7rem' }}>{site.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '0.8rem' }}>
+            <h5 style={{ color: '#8bb3da', fontSize: '0.8rem', marginBottom: '0.5rem' }}>🦁 Safaris & Tours</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem' }}>
+              {['trawell', 'viator', 'getyourguide'].map((key) => {
+                const site = BOOKING_SITES[key];
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      borderRadius: '0.8rem',
+                      padding: '0.6rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s'
+                    }}
+                    onClick={() => {
+                      openBookingSite(site.url);
+                      setMessages(prev => [...prev, { 
+                        type: 'ai', 
+                        content: `${site.icon} **Opening ${site.name}...**\n\n${site.description}\n\n🔗 ${site.url}` 
+                      }]);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    <div style={{ fontSize: '1.2rem' }}>{site.icon}</div>
+                    <div style={{ color: '#f0f7fe', fontSize: '0.7rem' }}>{site.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <h5 style={{ color: '#8bb3da', fontSize: '0.8rem', marginBottom: '0.5rem' }}>🚗 Car Rentals & Packages</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem' }}>
+              {['rentalcars', 'europcar', 'lastminute', 'travelocity'].map((key) => {
+                const site = BOOKING_SITES[key];
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      borderRadius: '0.8rem',
+                      padding: '0.6rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s'
+                    }}
+                    onClick={() => {
+                      openBookingSite(site.url);
+                      setMessages(prev => [...prev, { 
+                        type: 'ai', 
+                        content: `${site.icon} **Opening ${site.name}...**\n\n${site.description}\n\n🔗 ${site.url}` 
+                      }]);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    <div style={{ fontSize: '1.2rem' }}>{site.icon}</div>
+                    <div style={{ color: '#f0f7fe', fontSize: '0.7rem' }}>{site.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         {showChecklist && (
           <div className="checklist-modal">
@@ -2235,25 +2612,76 @@ function App() {
                 <p style={{ color: '#f0f7fe', fontSize: '0.9rem' }}>{itinerary.currency}</p>
               </div>
             </div>
-            <button 
-              onClick={() => window.open(BOOKING_URL, '_blank')}
-              style={{
-                marginTop: '1rem',
-                padding: '0.8rem 2rem',
-                background: 'linear-gradient(135deg, #2b7be4, #1f5fbb)',
-                border: 'none',
-                borderRadius: '40px',
-                color: 'white',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                margin: '1rem auto 0'
-              }}
-            >
-              <FontAwesomeIcon icon={faTicket} /> Book This Trip
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => window.open('https://www.booking.com', '_blank')}
+                style={{
+                  padding: '0.8rem 2rem',
+                  background: 'linear-gradient(135deg, #2b7be4, #1f5fbb)',
+                  border: 'none',
+                  borderRadius: '40px',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <FontAwesomeIcon icon={faHotel} /> Book Hotels
+              </button>
+              <button 
+                onClick={() => window.open('https://www.skyscanner.net', '_blank')}
+                style={{
+                  padding: '0.8rem 2rem',
+                  background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+                  border: 'none',
+                  borderRadius: '40px',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <FontAwesomeIcon icon={faPlane} /> Book Flights
+              </button>
+              <button 
+                onClick={() => window.open('https://www.trawellsafaris.com', '_blank')}
+                style={{
+                  padding: '0.8rem 2rem',
+                  background: 'linear-gradient(135deg, #f6b83d, #e6992b)',
+                  border: 'none',
+                  borderRadius: '40px',
+                  color: '#0b1a2e',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <FontAwesomeIcon icon={faPaw} /> Book Safari
+              </button>
+              <button 
+                onClick={() => window.open('https://www.airbnb.com', '_blank')}
+                style={{
+                  padding: '0.8rem 2rem',
+                  background: 'linear-gradient(135deg, #FF5A5F, #E31E24)',
+                  border: 'none',
+                  borderRadius: '40px',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <FontAwesomeIcon icon={faHome} /> Airbnb
+              </button>
+            </div>
           </div>
         )}
 

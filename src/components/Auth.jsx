@@ -1,363 +1,188 @@
-// src/components/Auth.jsx
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGoogle, faEnvelope, faLock, faUser, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword } from '../services/firebase.js';
+import { faTimes, faCompass, faEnvelope, faLock, faUser } from '@fortawesome/free-solid-svg-icons';
 
-function Auth({ onClose, onAuthSuccess }) {
+function AuthModal({ isOpen, onClose, onLogin, onRegister, onResetPassword }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resetMode, setResetMode] = useState(false);
+  const [showReset, setShowReset] = useState(false);
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError('');
-    const result = await signInWithGoogle();
-    setLoading(false);
-    
-    if (result.success) {
-      onAuthSuccess(result.user);
-      onClose();
-    } else {
-      setError(result.error);
-    }
-  };
+  if (!isOpen) return null;
 
-  const handleEmailAuth = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setLoading(true);
 
-    let result;
-    if (isLogin) {
-      result = await signInWithEmail(email, password);
-    } else {
-      result = await signUpWithEmail(email, password, displayName);
-    }
-
-    setLoading(false);
-    
-    if (result.success) {
-      onAuthSuccess(result.user);
-      onClose();
-    } else {
-      setError(result.error);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!email) {
-      setError('Please enter your email address');
+    if (!isLogin && password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
       return;
     }
-    
-    setLoading(true);
-    setError('');
-    const result = await resetPassword(email);
-    setLoading(false);
-    
-    if (result.success) {
-      setResetMode(false);
-      alert('Password reset email sent! Check your inbox.');
+
+    let success;
+    if (isLogin) {
+      success = await onLogin(email, password);
     } else {
-      setError(result.error);
+      success = await onRegister(name, email, password);
     }
+
+    setLoading(false);
+    if (success) {
+      onClose();
+      setName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    }
+  };
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const success = await onResetPassword(email);
+    setLoading(false);
+    if (success) {
+      setShowReset(false);
+      setEmail('');
+    }
+  };
+
+  const handleSwitch = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setName('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.7)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      backdropFilter: 'blur(10px)'
-    }}>
-      <div style={{
-        background: 'linear-gradient(145deg, #1b2f44, #0b1a2e)',
-        padding: '2.5rem',
-        borderRadius: '2rem',
-        maxWidth: '420px',
-        width: '90%',
-        position: 'relative',
-        border: '1px solid rgba(255,255,255,0.05)'
-      }}>
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '1rem',
-            right: '1rem',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '50%',
-            width: '35px',
-            height: '35px',
-            color: '#b6d9ff',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
+    <div className="auth-modal-overlay" onClick={onClose}>
+      <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="auth-close" onClick={onClose}>
           <FontAwesomeIcon icon={faTimes} />
         </button>
 
-        <h2 style={{ color: '#f0f7fe', marginBottom: '0.5rem' }}>
-          {resetMode ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Create Account'}
-        </h2>
-        <p style={{ color: '#8bb3da', marginBottom: '2rem' }}>
-          {resetMode 
-            ? 'Enter your email to reset your password' 
-            : isLogin 
-              ? 'Sign in to access your saved trips' 
-              : 'Start planning your dream trips'}
-        </p>
-
-        {error && (
-          <div style={{
-            background: 'rgba(255,68,68,0.1)',
-            padding: '0.8rem',
-            borderRadius: '0.8rem',
-            color: '#ff6b6b',
-            marginBottom: '1rem',
-            fontSize: '0.9rem'
-          }}>
-            {error}
+        <div className="auth-header">
+          <div className="auth-logo">
+            <FontAwesomeIcon icon={faCompass} />
           </div>
-        )}
+          <h2>{showReset ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+          <p>{showReset ? 'Enter your email to reset your password' : isLogin ? 'Sign in to continue your journey' : 'Start your travel adventure today'}</p>
+        </div>
 
-        {resetMode ? (
-          <form onSubmit={handleResetPassword}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ color: '#8bb3da', fontSize: '0.9rem', display: 'block', marginBottom: '0.3rem' }}>
-                Email Address
-              </label>
+        {showReset ? (
+          <form onSubmit={handleReset} className="auth-form">
+            <div className="auth-field">
+              <label>Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  borderRadius: '1rem',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  background: 'rgba(0,0,0,0.3)',
-                  color: '#f0f7fe',
-                  fontSize: '1rem'
-                }}
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 required
               />
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.8rem',
-                borderRadius: '1rem',
-                background: 'linear-gradient(135deg, #2b7be4, #1f5fbb)',
-                border: 'none',
-                color: 'white',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1
-              }}
-            >
+
+            {error && <div className="auth-error">{error}</div>}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
               {loading ? 'Sending...' : 'Send Reset Email'}
             </button>
-            <button
-              type="button"
-              onClick={() => setResetMode(false)}
-              style={{
-                width: '100%',
-                marginTop: '0.8rem',
-                padding: '0.8rem',
-                borderRadius: '1rem',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#8bb3da',
-                fontSize: '1rem',
-                cursor: 'pointer'
-              }}
-            >
-              Back to Login
-            </button>
+
+            <div className="auth-switch">
+              <button type="button" onClick={() => setShowReset(false)}>
+                Back to login
+              </button>
+            </div>
           </form>
         ) : (
-          <>
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.8rem',
-                borderRadius: '1rem',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#f0f7fe',
-                fontSize: '1rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                marginBottom: '1.5rem'
-              }}
-            >
-              <FontAwesomeIcon icon={faGoogle} style={{ color: '#ea4335' }} />
-              {isLogin ? 'Sign in with Google' : 'Sign up with Google'}
-            </button>
-
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              marginBottom: '1.5rem'
-            }}>
-              <hr style={{ flex: 1, border: '1px solid rgba(255,255,255,0.05)' }} />
-              <span style={{ color: '#8bb3da', fontSize: '0.8rem' }}>OR</span>
-              <hr style={{ flex: 1, border: '1px solid rgba(255,255,255,0.05)' }} />
-            </div>
-
-            <form onSubmit={handleEmailAuth}>
-              {!isLogin && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ color: '#8bb3da', fontSize: '0.9rem', display: 'block', marginBottom: '0.3rem' }}>
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.8rem',
-                      borderRadius: '1rem',
-                      border: '1px solid rgba(255,255,255,0.05)',
-                      background: 'rgba(0,0,0,0.3)',
-                      color: '#f0f7fe',
-                      fontSize: '1rem'
-                    }}
-                    placeholder="John Doe"
-                    required={!isLogin}
-                  />
-                </div>
-              )}
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#8bb3da', fontSize: '0.9rem', display: 'block', marginBottom: '0.3rem' }}>
-                  Email Address
-                </label>
+          <form onSubmit={handleSubmit} className="auth-form">
+            {!isLogin && (
+              <div className="auth-field">
+                <label>Full Name</label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.8rem',
-                    borderRadius: '1rem',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    background: 'rgba(0,0,0,0.3)',
-                    color: '#f0f7fe',
-                    fontSize: '1rem'
-                  }}
-                  placeholder="your@email.com"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your full name"
                   required
                 />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#8bb3da', fontSize: '0.9rem', display: 'block', marginBottom: '0.3rem' }}>
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.8rem',
-                    borderRadius: '1rem',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    background: 'rgba(0,0,0,0.3)',
-                    color: '#f0f7fe',
-                    fontSize: '1rem'
-                  }}
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  borderRadius: '1rem',
-                  background: 'linear-gradient(135deg, #2b7be4, #1f5fbb)',
-                  border: 'none',
-                  color: 'white',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
-              </button>
-            </form>
-
-            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#6fc3ff',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
-              </button>
-            </div>
-
-            {isLogin && (
-              <div style={{ marginTop: '0.5rem', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => setResetMode(true)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#8bb3da',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  Forgot password?
-                </button>
               </div>
             )}
-          </>
+
+            <div className="auth-field">
+              <label>Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <div className="auth-field">
+              <label>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isLogin ? 'Enter your password' : 'Create a password (min 6 characters)'}
+                required
+                minLength={6}
+              />
+            </div>
+
+            {!isLogin && (
+              <div className="auth-field">
+                <label>Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+
+            {error && <div className="auth-error">{error}</div>}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Create Account'}
+            </button>
+
+            {isLogin && (
+              <button
+                type="button"
+                className="auth-switch-btn"
+                onClick={() => setShowReset(true)}
+              >
+                Forgot password?
+              </button>
+            )}
+
+            <div className="auth-switch">
+              <span>{isLogin ? "Don't have an account?" : "Already have an account?"}</span>
+              <button type="button" onClick={handleSwitch}>
+                {isLogin ? 'Sign Up' : 'Sign In'}
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </div>
   );
 }
 
-export default Auth;
+export default AuthModal;

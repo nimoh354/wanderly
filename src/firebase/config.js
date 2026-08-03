@@ -2,33 +2,33 @@ import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
+  createUserWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
-  updateProfile,
   sendPasswordResetEmail,
   updateEmail,
-  updatePassword  // Add this
+  updatePassword,
+  updateProfile
 } from 'firebase/auth';
 import { 
   getFirestore, 
   doc, 
-  setDoc, 
   getDoc, 
-  updateDoc, 
-  deleteDoc,
-  collection, 
-  query, 
-  where, 
+  setDoc, 
+  updateDoc,
+  collection,
+  query,
+  where,
+  orderBy,
   getDocs,
   addDoc,
+  deleteDoc,
   serverTimestamp,
-  orderBy,
-  limit,
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
 
+// Your Firebase configuration from environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -38,16 +38,21 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- AUTH FUNCTIONS ---
+// Export auth, db, and onAuthStateChanged
+export { auth, db, onAuthStateChanged };
+
+// --- Auth Functions ---
 export const loginUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return { user: userCredential.user, error: null };
   } catch (error) {
+    console.error('Login error:', error);
     return { user: null, error: error.message };
   }
 };
@@ -56,6 +61,7 @@ export const registerUser = async (email, password, name) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(userCredential.user, { displayName: name });
+    
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       uid: userCredential.user.uid,
       name: name,
@@ -74,6 +80,7 @@ export const registerUser = async (email, password, name) => {
     });
     return { user: userCredential.user, error: null };
   } catch (error) {
+    console.error('Registration error:', error);
     return { user: null, error: error.message };
   }
 };
@@ -83,6 +90,7 @@ export const logoutUser = async () => {
     await signOut(auth);
     return { error: null };
   } catch (error) {
+    console.error('Logout error:', error);
     return { error: error.message };
   }
 };
@@ -92,16 +100,17 @@ export const resetPassword = async (email) => {
     await sendPasswordResetEmail(auth, email);
     return { error: null };
   } catch (error) {
+    console.error('Password reset error:', error);
     return { error: error.message };
   }
 };
 
-// ADD THESE TWO FUNCTIONS:
 export const updateUserEmail = async (newEmail) => {
   try {
     await updateEmail(auth.currentUser, newEmail);
     return { error: null };
   } catch (error) {
+    console.error('Update email error:', error);
     return { error: error.message };
   }
 };
@@ -111,19 +120,16 @@ export const updateUserPassword = async (newPassword) => {
     await updatePassword(auth.currentUser, newPassword);
     return { error: null };
   } catch (error) {
+    console.error('Update password error:', error);
     return { error: error.message };
   }
-};
-
-export const onAuthStateChange = (callback) => {
-  return onAuthStateChanged(auth, callback);
 };
 
 export const getCurrentUser = () => {
   return auth.currentUser;
 };
 
-// --- FIRESTORE FUNCTIONS ---
+// --- Firestore Functions ---
 export const getUserProfile = async (uid) => {
   try {
     const docRef = doc(db, 'users', uid);
@@ -134,6 +140,7 @@ export const getUserProfile = async (uid) => {
       return { data: null, error: 'User not found' };
     }
   } catch (error) {
+    console.error('Get user profile error:', error);
     return { data: null, error: error.message };
   }
 };
@@ -144,6 +151,7 @@ export const updateUserProfile = async (uid, data) => {
     await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
     return { error: null };
   } catch (error) {
+    console.error('Update user profile error:', error);
     return { error: error.message };
   }
 };
@@ -154,6 +162,7 @@ export const updateUserPlan = async (uid, plan) => {
     await updateDoc(docRef, { plan, updatedAt: serverTimestamp() });
     return { error: null };
   } catch (error) {
+    console.error('Update user plan error:', error);
     return { error: error.message };
   }
 };
@@ -167,6 +176,7 @@ export const saveTrip = async (userId, tripData) => {
     });
     return { id: docRef.id, error: null };
   } catch (error) {
+    console.error('Save trip error:', error);
     return { id: null, error: error.message };
   }
 };
@@ -185,6 +195,7 @@ export const getUserTrips = async (userId) => {
     });
     return { trips, error: null };
   } catch (error) {
+    console.error('Get user trips error:', error);
     return { trips: [], error: error.message };
   }
 };
@@ -194,6 +205,7 @@ export const deleteTrip = async (tripId) => {
     await deleteDoc(doc(db, 'trips', tripId));
     return { error: null };
   } catch (error) {
+    console.error('Delete trip error:', error);
     return { error: error.message };
   }
 };
@@ -208,6 +220,7 @@ export const bookSafari = async (userId, bookingData) => {
     });
     return { id: docRef.id, error: null };
   } catch (error) {
+    console.error('Book safari error:', error);
     return { id: null, error: error.message };
   }
 };
@@ -226,6 +239,7 @@ export const getUserSafariBookings = async (userId) => {
     });
     return { bookings, error: null };
   } catch (error) {
+    console.error('Get safari bookings error:', error);
     return { bookings: [], error: error.message };
   }
 };
@@ -236,6 +250,7 @@ export const updateSafariBooking = async (bookingId, status) => {
     await updateDoc(docRef, { status, updatedAt: serverTimestamp() });
     return { error: null };
   } catch (error) {
+    console.error('Update safari booking error:', error);
     return { error: error.message };
   }
 };
@@ -249,6 +264,7 @@ export const saveMessage = async (userId, messageData) => {
     });
     return { id: docRef.id, error: null };
   } catch (error) {
+    console.error('Save message error:', error);
     return { id: null, error: error.message };
   }
 };
@@ -268,6 +284,7 @@ export const getUserMessages = async (userId, limitCount = 50) => {
     });
     return { messages: messages.reverse(), error: null };
   } catch (error) {
+    console.error('Get user messages error:', error);
     return { messages: [], error: error.message };
   }
 };
@@ -281,6 +298,7 @@ export const saveFavoriteDestination = async (userId, destination) => {
     });
     return { error: null };
   } catch (error) {
+    console.error('Save favorite error:', error);
     return { error: error.message };
   }
 };
@@ -294,8 +312,7 @@ export const removeFavoriteDestination = async (userId, destination) => {
     });
     return { error: null };
   } catch (error) {
+    console.error('Remove favorite error:', error);
     return { error: error.message };
   }
 };
-
-export { auth, db };

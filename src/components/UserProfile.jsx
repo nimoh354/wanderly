@@ -1,224 +1,172 @@
-// src/components/UserProfile.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faUser, faSignOutAlt, faEnvelope, faCalendar, 
-  faRoute, faStar, faCog, faTimes, faCloud
+  faTimes, faUser, faCrown, faSignOutAlt, faEdit, faSave,
+  faRoute, faTicket, faStar, faCalendar, faGem
 } from '@fortawesome/free-solid-svg-icons';
-import { signOutUser, getUserProfile, getUserItineraries } from '../services/firebase.js';
 
-function UserProfile({ user, onClose, onSignOut }) {
-  const [profile, setProfile] = useState(null);
-  const [itineraries, setItineraries] = useState([]);
-  const [loading, setLoading] = useState(true);
+function UserProfile({ user, onLogout, onUpdateProfile, onClose, userTrips, userBookings }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      if (user) {
-        const profileResult = await getUserProfile(user.uid);
-        if (profileResult.success) {
-          setProfile(profileResult.data);
-        }
-        
-        const itinerariesResult = await getUserItineraries(user.uid);
-        if (itinerariesResult.success) {
-          setItineraries(itinerariesResult.data);
-        }
-        
-        setLoading(false);
-      }
+  if (!user) return null;
+
+  const handleSave = async () => {
+    setLoading(true);
+    await onUpdateProfile({ name, email });
+    setLoading(false);
+    setIsEditing(false);
+  };
+
+  const getPlanBadge = (plan) => {
+    const plans = {
+      free: { color: '#aac9f0', label: 'Standard' },
+      basic: { color: '#6fd4b0', label: 'Premium' },
+      pro: { color: '#f5c542', label: 'Luxury' }
     };
-    
-    loadUserData();
-  }, [user]);
-
-  const handleSignOut = async () => {
-    const result = await signOutUser();
-    if (result.success) {
-      onSignOut();
-      onClose();
-    }
+    return plans[plan] || plans.free;
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.7)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      backdropFilter: 'blur(10px)'
-    }}>
-      <div style={{
-        background: 'linear-gradient(145deg, #1b2f44, #0b1a2e)',
-        padding: '2rem',
-        borderRadius: '2rem',
-        maxWidth: '500px',
-        width: '90%',
-        maxHeight: '80vh',
-        overflow: 'auto',
-        position: 'relative',
-        border: '1px solid rgba(255,255,255,0.05)'
-      }}>
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '1rem',
-            right: '1rem',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '50%',
-            width: '35px',
-            height: '35px',
-            color: '#b6d9ff',
-            cursor: 'pointer'
-          }}
-        >
+    <div className="profile-modal-overlay" onClick={onClose}>
+      <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="profile-close" onClick={onClose}>
           <FontAwesomeIcon icon={faTimes} />
         </button>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: '#8bb3da' }}>
-            Loading...
+        <div className="profile-header">
+          <div className="profile-avatar">
+            <FontAwesomeIcon icon={faUser} size="3x" />
           </div>
-        ) : (
-          <>
-            {/* User Info */}
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #2b7be4, #1f5fbb)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-                fontSize: '2.5rem',
-                color: 'white'
-              }}>
-                <FontAwesomeIcon icon={faUser} />
-              </div>
-              <h3 style={{ color: '#f0f7fe' }}>{profile?.displayName || 'Traveler'}</h3>
-              <p style={{ color: '#8bb3da', fontSize: '0.9rem' }}>
-                <FontAwesomeIcon icon={faEnvelope} style={{ marginRight: '0.5rem' }} />
-                {user?.email}
-              </p>
-              <p style={{ color: '#8bb3da', fontSize: '0.8rem' }}>
-                <FontAwesomeIcon icon={faCalendar} style={{ marginRight: '0.5rem' }} />
-                Member since {profile?.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently'}
-              </p>
-            </div>
+          <h2>{user.name || 'Traveler'}</h2>
+          <p>{user.email}</p>
+          <div className="profile-plan">
+            <FontAwesomeIcon icon={faGem} style={{ marginRight: '4px' }} />
+            {getPlanBadge(user.plan).label} Plan
+          </div>
+        </div>
 
-            {/* Stats */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '1rem',
-              marginBottom: '2rem'
-            }}>
-              <div style={{
-                background: 'rgba(0,0,0,0.2)',
-                padding: '1rem',
-                borderRadius: '1rem',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#6fc3ff' }}>
-                  {itineraries.length}
-                </div>
-                <div style={{ color: '#8bb3da', fontSize: '0.8rem' }}>Trips</div>
-              </div>
-              <div style={{
-                background: 'rgba(0,0,0,0.2)',
-                padding: '1rem',
-                borderRadius: '1rem',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#6fc3ff' }}>
-                  {profile?.savedItineraries?.length || 0}
-                </div>
-                <div style={{ color: '#8bb3da', fontSize: '0.8rem' }}>Saved</div>
-              </div>
-              <div style={{
-                background: 'rgba(0,0,0,0.2)',
-                padding: '1rem',
-                borderRadius: '1rem',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#6fc3ff' }}>
-                  {profile?.preferences?.defaultPlan || 'Free'}
-                </div>
-                <div style={{ color: '#8bb3da', fontSize: '0.8rem' }}>Plan</div>
-              </div>
-            </div>
+        <div className="profile-stats">
+          <div className="stat-item">
+            <span className="stat-value">{userTrips?.length || 0}</span>
+            <span className="stat-label">Trips</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{userBookings?.length || 0}</span>
+            <span className="stat-label">Bookings</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{user.reviews || 0}</span>
+            <span className="stat-label">Reviews</span>
+          </div>
+        </div>
 
-            {/* Saved Itineraries */}
-            {itineraries.length > 0 && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ color: '#f0f7fe', marginBottom: '0.5rem' }}>
-                  <FontAwesomeIcon icon={faRoute} style={{ color: '#6fc3ff', marginRight: '0.5rem' }} />
-                  Your Trips
-                </h4>
-                {itineraries.slice(0, 3).map((itinerary) => (
-                  <div key={itinerary.id} style={{
-                    background: 'rgba(0,0,0,0.2)',
-                    padding: '0.8rem',
-                    borderRadius: '0.8rem',
-                    marginBottom: '0.5rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{ color: '#f0f7fe' }}>{itinerary.destination}</div>
-                      <div style={{ color: '#8bb3da', fontSize: '0.8rem' }}>
-                        {itinerary.days} days · {itinerary.attractions?.length || 0} attractions
-                      </div>
-                    </div>
-                    {itinerary.shared && (
-                      <span style={{ color: '#6fc3ff', fontSize: '0.7rem' }}>
-                        <FontAwesomeIcon icon={faCloud} /> Shared
-                      </span>
-                    )}
-                  </div>
-                ))}
-                {itineraries.length > 3 && (
-                  <p style={{ color: '#8bb3da', fontSize: '0.8rem', textAlign: 'center' }}>
-                    +{itineraries.length - 3} more trips
-                  </p>
-                )}
+        <div className="profile-body">
+          <div className="profile-section">
+            <h4>Account Information</h4>
+            {isEditing ? (
+              <div className="profile-edit-form">
+                <div className="profile-field">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="profile-field">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="profile-actions">
+                  <button 
+                    className="profile-save" 
+                    onClick={handleSave}
+                    disabled={loading}
+                  >
+                    <FontAwesomeIcon icon={faSave} /> {loading ? 'Saving...' : 'Save'}
+                  </button>
+                  <button 
+                    className="profile-cancel" 
+                    onClick={() => setIsEditing(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="profile-info">
+                <div className="info-row">
+                  <span className="info-label">Name</span>
+                  <span className="info-value">{user.name}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Email</span>
+                  <span className="info-value">{user.email}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Plan</span>
+                  <span className="info-value" style={{ color: getPlanBadge(user.plan).color }}>
+                    {getPlanBadge(user.plan).label}
+                  </span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Member Since</span>
+                  <span className="info-value">{user.memberSince || 'N/A'}</span>
+                </div>
               </div>
             )}
+          </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={handleSignOut}
-                style={{
-                  flex: 1,
-                  padding: '0.8rem',
-                  borderRadius: '1rem',
-                  background: 'rgba(255,68,68,0.1)',
-                  border: '1px solid rgba(255,68,68,0.2)',
-                  color: '#ff6b6b',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <FontAwesomeIcon icon={faSignOutAlt} /> Sign Out
-              </button>
+          {userTrips && userTrips.length > 0 && (
+            <div className="profile-section">
+              <h4><FontAwesomeIcon icon={faRoute} /> Recent Trips</h4>
+              {userTrips.slice(0, 3).map((trip) => (
+                <div key={trip.id} className="profile-trip-item">
+                  <span>✈️ {trip.destination}</span>
+                  <span className="status-confirmed">{trip.days} days</span>
+                </div>
+              ))}
             </div>
-          </>
-        )}
+          )}
+
+          {userBookings && userBookings.length > 0 && (
+            <div className="profile-section">
+              <h4><FontAwesomeIcon icon={faTicket} /> Recent Bookings</h4>
+              {userBookings.slice(0, 3).map((booking) => (
+                <div key={booking.id} className="profile-trip-item">
+                  <span>🦁 {booking.packageName}</span>
+                  <span className={`status-${booking.status}`}>
+                    {booking.status || 'Pending'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="profile-actions" style={{ marginTop: '1rem' }}>
+            {!isEditing && (
+              <button 
+                className="profile-edit" 
+                onClick={() => setIsEditing(true)}
+              >
+                <FontAwesomeIcon icon={faEdit} /> Edit Profile
+              </button>
+            )}
+            <button 
+              className="profile-logout" 
+              onClick={onLogout}
+            >
+              <FontAwesomeIcon icon={faSignOutAlt} /> Logout
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
