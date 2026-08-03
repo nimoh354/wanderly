@@ -34,11 +34,15 @@ function AuthModal({ isOpen, onClose, onLogin, onRegister, onResetPassword }) {
 
     setLoading(false);
     if (success) {
+      // Close modal and reset fields
       onClose();
       setName('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      
+      // User will be automatically logged in after registration
+      // The auth listener will handle the login state
     }
   };
 
